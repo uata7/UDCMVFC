@@ -1,0 +1,34 @@
+function dlcc_dm = UDCMVFC_grad(views, M ,uall, normall,v0,r,tau,l)
+num_views = length(M);
+n = size(views{v0}, 1);
+c = size(M{v0}, 1); 
+dv0 = size(M{v0}, 2);
+uuualls = vertcat(uall{:});
+nnnorms = vertcat(normall{:});
+S = uuualls * uuualls'; 
+normpp = nnnorms * nnnorms';
+S = S ./ normpp;
+S(1:size(S,1)+1:end) = 0;
+Bs = sum(exp(S / tau), 2) - 1;
+dLcc_du = zeros(n, c);
+for i0 = 1:n
+    idx_i0v0=(v0-1)*n+i0;
+    Si0v0s=S(:, idx_i0v0);
+    u_i0v0 = uuualls(idx_i0v0,:);  
+    norm_i0v0 = nnnorms(idx_i0v0); 
+   gradv0i0alls = (uuualls ./ (nnnorms * norm_i0v0)) - (Si0v0s * u_i0v0 / norm_i0v0^2);
+   gradv0i0alls(idx_i0v0,:)=0; 
+   result1 = sum(gradv0i0alls((0:num_views-1)*n + i0, :), 1);
+exp_i0all=exp( Si0v0s / tau);
+expgrad=exp_i0all.* gradv0i0alls;
+B_i0v0=Bs(idx_i0v0);
+result2 = sum(expgrad./Bs + expgrad./B_i0v0,1);
+result=(result2 -(2/(num_views-1))*result1)/tau;
+dLcc_du(i0, :) = (1/(num_views*n)) * (result)*(dv0^l);
+end
+uv0rt = uall{v0}.^r; 
+W=dLcc_du.* (uv0rt);   
+row=sum(W,1);  
+dlcc_dm= (row') .*M{v0}-W'*views{v0}; 
+dlcc_dm=2/(1-r)*dlcc_dm; 
+end
